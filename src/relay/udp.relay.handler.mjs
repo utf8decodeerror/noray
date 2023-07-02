@@ -45,9 +45,11 @@ export class UDPRelayHandler extends EventEmitter {
 
   /**
   * Create a relay entry.
+  *
+  * If there's already a relay for the address, returns that.
+  * NOTE: This modifies the incoming relay and returns the same instance.
   * @param {RelayEntry} relay Relay
-  * @return {Promise<boolean>} True if the entry was created, false if it
-  * already exists
+  * @return {Promise<RelayEntry>} Resulting relay
   * @fires UDPRelayHandler#create
   */
   async createRelay (relay) {
@@ -55,25 +57,30 @@ export class UDPRelayHandler extends EventEmitter {
     if (this.hasRelay(relay)) {
       // We already have this relay entry
       log.trace({ relay }, 'Relay already exists, ignoring')
-      return false
+      return this.#relayTable.find(e => e.equals(relay))
     }
 
+    relay.port = this.#socketPool.getPort()
     this.emit('create', relay)
 
-    const socket = await this.#ensurePort(relay.port)
-    socket.on('message', (msg, rinfo) => {
-      this.relay(msg, NetAddress.fromRinfo(rinfo), relay.port)
-    })
+    const socket = this.#socketPool.getSocket(relay.port)
+    socket.removeAllListeners('message')
+      .on('message', (msg, rinfo) => {
+        this.relay(msg, NetAddress.fromRinfo(rinfo), relay.port)
+      })
+
     relay.lastReceived = time()
     relay.created = time()
     this.#relayTable.push(relay)
     log.trace({ relay }, 'Relay created')
 
-    return true
+    return relay
   }
 
   /**
   * Check if relay already exists in the table.
+  *
+  * NOTE: This only compares the addresses, not the allocated port.
   * @param {RelayEntry} relay Relay
   * @returns {boolean} True if relay already exists
   */
@@ -95,13 +102,13 @@ export class UDPRelayHandler extends EventEmitter {
 
     this.emit('destroy', relay)
 
-    this.#socketPool.freePort(relay.port)
+    this.#socketPool.returnPort(relay.port)
     this.#relayTable = this.#relayTable.filter((_, i) => i !== idx)
     return true
   }
 
   /**
-  * Free all relay entries, and by extension, sockets in the pool.
+  * Free all relay entries.
   */
   clear () {
     this.relayTable.forEach(entry => this.freeRelay(entry))
