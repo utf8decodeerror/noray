@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv'
 import { byteSize, duration, integer, number, ports } from './config.parsers.mjs'
 import logger, { getLogLevel } from './logger.mjs'
+import { urlAlphabet } from 'nanoid'
 
 dotenv.config()
 
@@ -10,6 +11,16 @@ const env = process.env
 * Noray configuration type.
 */
 export class NorayConfig {
+  oid = {
+    length: integer(env.NORAY_OID_LENGTH) ?? 21,
+    charset: env.NORAY_OID_CHARSET ?? urlAlphabet
+  }
+
+  pid = {
+    length: integer(env.NORAY_PID_LENGTH) ?? 128,
+    charset: env.NORAY_PID_CHARSET ?? urlAlphabet
+  }
+
   socket = {
     host: env.NORAY_SOCKET_HOST ?? '::1',
     port: integer(env.NORAY_SOCKET_PORT) ?? 8890
