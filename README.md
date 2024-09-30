@@ -58,7 +58,7 @@ After cloning the repository, run `pnpm install` to install all required package
 
 ## Configuration
 
-*noray* can be configured through environment variables or a `.env` file. For available configuration keys and their purpose, please see the [example configuration](.env.example).
+*noray* can be configured through environment variables or a `.env` file. For available configuration keys and their purpose, please see the [example configuration](.env).
 
 ## Usage
 
